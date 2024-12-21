@@ -25,14 +25,68 @@ struct Person {
 }
 
 #[derive(Deserialize)]
+#[serde(try_from = "String")]
+struct Nick(String);
+
+impl TryFrom<String> for Nick {
+    type Error = &'static str;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if value.len() > 32 {
+            Err("Nick length must not exceed 32 characters")
+        } else {
+            Ok(Self(value))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(try_from = "String")]
+struct PersonName(String);
+
+impl TryFrom<String> for PersonName {
+    type Error = &'static str;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if value.len() > 100 {
+            Err("Name length must not exceed 100 characters")
+        } else {
+            Ok(Self(value))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(try_from = "String")]
+struct Tech(String);
+
+impl TryFrom<String> for Tech {
+    type Error = &'static str;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        if value.len() > 32 {
+            Err("Tech length must not exceed 32 characters")
+        } else {
+            Ok(Self(value))
+        }
+    }
+}
+
+impl From<Tech> for String {
+    fn from(value: Tech) -> Self {
+        value.0
+    }
+}
+
+#[derive(Deserialize)]
 struct NewPerson {
     #[serde(rename = "nome")]
-    name: String,
+    name: PersonName,
     #[serde(rename = "apelido")]
-    nick: String,
+    nick: Nick,
     #[serde(rename = "nascimento", with = "date_format")]
     birth_date: Date,
-    stack: Option<Vec<String>>
+    stack: Option<Vec<Tech>>
 }
 
 type AppState = Arc<RwLock<HashMap<Uuid, Person>>>;
@@ -91,20 +145,16 @@ async fn create_person(
     Json(new_person): Json<NewPerson>
 ) -> Result<(StatusCode, Json<Person>), StatusCode> {
 
-    if new_person.name.len() > 100
-        || new_person.nick.len() > 32
-        || new_person.stack
-            .as_ref()
-            .is_some_and(|s| s.iter().any(|item: &String| item.len() > 32)) {
+    if new_person.stack.as_ref().is_some_and(|s| s.iter().any(|item| item.0.len() > 32)) {
         return Err(StatusCode::UNPROCESSABLE_ENTITY);
     }
 
     let person = Person {
         id: Uuid::now_v7(),
-        name: new_person.name,
-        nick: new_person.nick,
+        name: new_person.name.0,
+        nick: new_person.nick.0,
         birth_date: new_person.birth_date,
-        stack: new_person.stack
+        stack: new_person.stack.map(|stack| stack.into_iter().map(String::from).collect())
     };
     people.write().await.insert(person.id, person.clone());
     Ok((StatusCode::CREATED, Json(person)))
