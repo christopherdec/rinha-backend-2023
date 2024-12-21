@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use axum::{
-    extract::{Path, Query, State}, http::StatusCode, response::IntoResponse, routing::{get, post}, Json, Router
+    extract::{Path, State}, http::StatusCode, response::IntoResponse, routing::{get, post}, Json, Router
 };
 use serde::{Deserialize, Serialize};
 use time::{macros::date, Date};
@@ -33,11 +33,6 @@ struct NewPerson {
     #[serde(rename = "nascimento", with = "date_format")]
     birth_date: Date,
     stack: Option<Vec<String>>
-}
-
-#[derive(Deserialize)]
-struct SearchParams {
-    t: String,
 }
 
 type AppState = Arc<RwLock<HashMap<Uuid, Person>>>;
@@ -75,23 +70,9 @@ async fn main() {
 }
 
 async fn search_people(
-    Query(search_params): Query<SearchParams>,
-    State(people): State<AppState>
-) -> Result<Vec<Json<Person>>, (StatusCode, String)> {
-    let t = search_params.t;
-    if t.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, String::from("Please inform the query search param \"t\"")));
-    }
-    let filtered = people.read()
-        .await
-        .values()
-        .filter(|person| person.name.contains(&t) 
-            || person.nick.contains(&t) 
-            || person.stack.as_ref().is_some_and(|s| s.contains(&t)))
-        .map(|person| Json(person.clone()))
-        .collect();
-
-    Ok(filtered)
+    State(_people): State<AppState>
+) -> impl IntoResponse {
+    StatusCode::NOT_IMPLEMENTED
 }
 
 async fn find_person(
@@ -108,7 +89,16 @@ async fn find_person(
 async fn create_person(
     State(people): State<AppState>,
     Json(new_person): Json<NewPerson>
-) -> impl IntoResponse {
+) -> Result<(StatusCode, Json<Person>), StatusCode> {
+
+    if new_person.name.len() > 100
+        || new_person.nick.len() > 32
+        || new_person.stack
+            .as_ref()
+            .is_some_and(|s| s.iter().any(|item: &String| item.len() > 32)) {
+        return Err(StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
     let person = Person {
         id: Uuid::now_v7(),
         name: new_person.name,
@@ -117,7 +107,7 @@ async fn create_person(
         stack: new_person.stack
     };
     people.write().await.insert(person.id, person.clone());
-    (StatusCode::CREATED, Json(person))
+    Ok((StatusCode::CREATED, Json(person)))
 }
 
 async fn count_people(
