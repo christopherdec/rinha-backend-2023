@@ -6,7 +6,7 @@ use std::{
 
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header, HeaderValue, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -107,7 +107,7 @@ async fn main() {
     let port = env::var("PORT")
         .ok()
         .and_then(|port| port.parse::<u16>().ok())
-        .unwrap_or(3000);
+        .unwrap_or(9999);
 
     let database_url = env::var("DATABASE_URL").unwrap_or(String::from(
         "postgres://admin:postgres@localhost:5432/rinha",
@@ -166,10 +166,13 @@ async fn find_person(
 async fn create_person(
     State(repo): State<AppState>,
     Json(new_person): Json<NewPerson>,
-) -> Result<(StatusCode, Json<Person>), StatusCode> {
-    // todo: add Location header
+) -> impl IntoResponse {
     match repo.insert(new_person).await {
-        Ok(person) => Ok((StatusCode::CREATED, Json(person))),
+        Ok(person) => {
+            Ok((StatusCode::CREATED, 
+                [(header::LOCATION, format!("/pessoas/{}", person.id).parse::<HeaderValue>().unwrap())], 
+                Json(person)))
+        },
         Err(sqlx::Error::Database(err)) if err.is_unique_violation() => {
             Err(StatusCode::UNPROCESSABLE_ENTITY)
         }
