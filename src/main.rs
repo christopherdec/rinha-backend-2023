@@ -113,6 +113,8 @@ async fn main() {
         "postgres://admin:postgres@localhost:5432/rinha",
     ));
 
+    println!("Connect to db url {database_url}");
+
     let repo = PeopleRepository::connect(database_url).await;
 
     let app_state = Arc::new(repo);
@@ -124,8 +126,10 @@ async fn main() {
         .route("/contagem-pessoas", get(count_people))
         .with_state(app_state);
 
+    println!("Server listening on port {port}");
+
     let listener =
-        tokio::net::TcpListener::bind(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port))
+        tokio::net::TcpListener::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port))
             .await
             .unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -141,6 +145,7 @@ async fn search_people(
     State(repo): State<AppState>,
     Query(PersonSearchParams { query }): Query<PersonSearchParams>,
 ) -> impl IntoResponse {
+    // todo: return BadRequest if query not informed
     match repo.search(query).await {
         Ok(people) => Ok(Json(people)),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
@@ -162,6 +167,7 @@ async fn create_person(
     State(repo): State<AppState>,
     Json(new_person): Json<NewPerson>,
 ) -> Result<(StatusCode, Json<Person>), StatusCode> {
+    // todo: add Location header
     match repo.insert(new_person).await {
         Ok(person) => Ok((StatusCode::CREATED, Json(person))),
         Err(sqlx::Error::Database(err)) if err.is_unique_violation() => {
