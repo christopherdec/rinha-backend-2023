@@ -18,10 +18,10 @@ The server uses Postgres for persistence. The `docker-compose-dev.yml` file can 
 
 To run the application for the stress test, the `docker-compose.yml` file should be used. Following the challenge [speficiations](https://github.com/zanfranceschi/rinha-de-backend-2023-q3/blob/main/INSTRUCOES.md), it launches two instances of the API, behind a NGINX server which acts as a load balancer. The containers may use up to a total of 1.5 CPUs and 3.0GB of memory. 
 
-The Gatling battery of tests can be found [here](https://github.com/zanfranceschi/rinha-de-backend-2023-q3/tree/main/stress-test). After cloning/copying this folder, execute the file `geracao_recursos.py` to generate test data, then execute one of the `run-test` scripts.
+The Gatling test suite is available at [rinha-de-backend-2023-q3](https://github.com/zanfranceschi/rinha-de-backend-2023-q3/tree/main/stress-test). In the `stress-test` folder, execute the file `geracao_recursos.py` to generate test data, then execute one of the `run-test` scripts to launch the test at port 9999, where NGINX should be running.
 
 ## Results
 
-According to the Gatling stress test report, the application performed reasonably well. ~45k people were created, which would enter the challenge's top 10. Some requests failed due to error `j.i.IOException: Premature close`. As mentioned in [@akitaonrails](https://github.com/akitaonrails)'s [video](https://www.youtube.com/watch?v=EifK2a_5K_U), this is caused by the slowdown introduced by Docker's internal DNS layer, which can be solved exclusively on Linux by using `network_mode: host`, but I was developing on Windows and didn't find a solution at the time.
+According to the stress test report, the application performed reasonably well: ~45k people were created, which would place this entry at the challenge's top 3 scores. Some requests failed due to error `j.i.IOException: Premature close`. As mentioned in [@akitaonrails](https://github.com/akitaonrails) [video](https://www.youtube.com/watch?v=EifK2a_5K_U), this is caused by the slowdown introduced by Docker's internal DNS layer, which can be solved on Linux by using `network_mode: host`.
 
 ![results](images/results.png)
