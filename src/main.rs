@@ -18,26 +18,24 @@ use uuid::Uuid;
 
 mod persistence;
 
-// a better option would be to use the iso8601 module
 time::serde::format_description!(date_format, Date, "[year]-[month]-[day]");
 
-// todo: declare struct and fields as pub if necessary
 #[derive(Clone, Serialize, sqlx::FromRow)]
 pub struct Person {
-    id: Uuid,
+    pub id: Uuid,
     #[serde(rename = "nome")]
-    name: String,
+    pub name: String,
     #[serde(rename = "apelido")]
-    nick: String,
+    pub nick: String,
     #[serde(rename = "nascimento", with = "date_format")]
-    birth_date: Date,
-    stack: Option<Vec<String>>,
+    pub birth_date: Date,
+    pub stack: Option<Vec<String>>,
 }
 
 macro_rules! limited_string_type {
     ($type: ident, max_length = $max_length: expr, error_msg = $error_msg: expr) => {
         #[derive(Deserialize)]
-        #[serde(try_from = "String")]
+        #[serde(try_from = "String")]        
         pub struct $type(String);
 
         impl TryFrom<String> for $type {
@@ -67,12 +65,12 @@ limited_string_type!(Tech, max_length = 32, error_msg = "Tech length must not ex
 #[derive(Deserialize)]
 pub struct NewPerson {
     #[serde(rename = "nome")]
-    name: PersonName,
+    pub name: PersonName,
     #[serde(rename = "apelido")]
-    nick: Nick,
+    pub nick: Nick,
     #[serde(rename = "nascimento", with = "date_format")]
-    birth_date: Date,
-    stack: Option<Vec<Tech>>,
+    pub birth_date: Date,
+    pub stack: Option<Vec<Tech>>,
 }
 
 // note: the sqlx Pool is already wrapped by an Arc
@@ -121,7 +119,6 @@ async fn search_people(
     State(repo): State<AppState>,
     Query(PersonSearchParams { query }): Query<PersonSearchParams>,
 ) -> impl IntoResponse {
-    // todo: return BadRequest if query not informed
     match repo.search(query).await {
         Ok(people) => Ok(Json(people)),
         Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
