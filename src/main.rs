@@ -34,59 +34,35 @@ pub struct Person {
     stack: Option<Vec<String>>,
 }
 
-#[derive(Deserialize)]
-#[serde(try_from = "String")]
-struct Nick(String);
+macro_rules! limited_string_type {
+    ($type: ident, max_length = $max_length: expr, error_msg = $error_msg: expr) => {
+        #[derive(Deserialize)]
+        #[serde(try_from = "String")]
+        pub struct $type(String);
 
-impl TryFrom<String> for Nick {
-    type Error = &'static str;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value.len() > 32 {
-            Err("Nick length must not exceed 32 characters")
-        } else {
-            Ok(Self(value))
+        impl TryFrom<String> for $type {
+            type Error = &'static str;
+        
+            fn try_from(value: String) -> Result<Self, Self::Error> {
+                if value.len() > $max_length {
+                    Err($error_msg)
+                } else {
+                    Ok(Self(value))
+                }
+            }
         }
-    }
-}
 
-#[derive(Deserialize)]
-#[serde(try_from = "String")]
-struct PersonName(String);
-
-impl TryFrom<String> for PersonName {
-    type Error = &'static str;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value.len() > 100 {
-            Err("Name length must not exceed 100 characters")
-        } else {
-            Ok(Self(value))
+        impl From<$type> for String {
+            fn from(value: $type) -> Self {
+                value.0
+            }
         }
-    }
+    };
 }
 
-#[derive(Deserialize)]
-#[serde(try_from = "String")]
-struct Tech(String);
-
-impl TryFrom<String> for Tech {
-    type Error = &'static str;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value.len() > 32 {
-            Err("Tech length must not exceed 32 characters")
-        } else {
-            Ok(Self(value))
-        }
-    }
-}
-
-impl From<Tech> for String {
-    fn from(value: Tech) -> Self {
-        value.0
-    }
-}
+limited_string_type!(PersonName, max_length = 100, error_msg = "Name length must not exceed 100 characters");
+limited_string_type!(Nick, max_length = 32, error_msg = "Nick length must not exceed 32 characters");
+limited_string_type!(Tech, max_length = 32, error_msg = "Tech length must not exceed 32 characters");
 
 #[derive(Deserialize)]
 pub struct NewPerson {
